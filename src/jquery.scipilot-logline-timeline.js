@@ -15,7 +15,7 @@
 
 	$.extend(ScipilotLoglineVisTimeline.prototype, {
 		// plugin name
-		name: 'scipilot_logine',
+		name: 'scipilot_logline',
 
 		// the vis timeline object
 		timeline: null,
@@ -152,7 +152,8 @@
 		 */
 		loadInjectedData: function (fnDataProvider) {
 
-			var jLoadingSpinner = $('<div class="' + this.settings.CSS.loading + '">Loading ' + noun + '...</div>')
+			// todo: I used to have the 'noun' here, but can't now. Wondering if dataProvider should be a class? to provide meta early.
+			var jLoadingSpinner = $('<div class="' + this.settings.CSS.loading + '">Loading from data source...</div>')
 				.prependTo($('.' + this.settings.CSS.loader));
 
 			var data = fnDataProvider(
