@@ -48,8 +48,10 @@
 				'loading': 'loading',
 				'loader': 'loader'
 			},
-			dataProviders: []
+			dataProviders: [],
+			onDataLoaded: function(){this.log("All data loaded!");}
 		},
+		seriesLoaded: 0, // tracks DP loading progress
 
 		// Plugin instance initialisation and configuration
 		init: function (el, options) {
@@ -123,9 +125,10 @@
 			// todo: use timeline strategy pattern, to enable switch to CHAPS-LINK for clustering, or other library?
 			this.timeline = new vis.Timeline(this.element.get(0), this.dsItems, this.dsGroups, this.timelineOptions);
 
-			// The mashup list...
+			// Load the data mashup list
+			this.seriesLoaded = 0;
 			$.each(this.settings.dataProviders, $.proxy(function (i, dp) {
-				this.loadInjectedData(dp);
+				this.loadInjectedData(dp, this.settings.dataProviders.length, i+1);
 			}, this));
 		},
 
@@ -147,29 +150,34 @@
 		},
 
 		/**
-		 * Handles sync/async loading via dataProvider which performs either local or remote data-loading. 
+		 * Handles sync/async loading via dataProvider which performs either local or remote data-loading.
 		 * @param fnDataProvider should return to the callback a data Object {meta:{logGroupField:, stateField:, dateField:, groupTitles:{}, rangedLogs:{}, cssClassMap:{}}, data:{[ row, ... ]}}
+		 * @param total int Number of series to be loaded
+		 * @param index int 1-based index of which series this is
 		 */
-		loadInjectedData: function (fnDataProvider) {
+		loadInjectedData: function (fnDataProvider, total, index) {
 
 			// todo: I used to have the 'noun' here, but can't now. Wondering if dataProvider should be a class? to provide meta early.
-			var jLoadingSpinner = $('<div class="' + this.settings.CSS.loading + '">Loading from data source...</div>')
+			var jLoadingSpinner = $('<div class="' + this.settings.CSS.loading + '">Loading data from source '+index+'/'+total+'...</div>')
 				.prependTo($('.' + this.settings.CSS.loader));
 
 			var data = fnDataProvider(
+				this.settings.unitId,
 				this.settings.since,
 				this.settings.until,
-				this.settings.unitId,
 				$.proxy(function (status, data) {
 					if (status == 'success') {
 						this.injectMetaData(data.meta);
-						this.processLogs(data.data, meta);
+						this.processLogs(data.data, data.meta);
 					}
 					else {
-						alert('Sorry, the ' + noun + ' data failed to load. (' + status + ')');
+						alert('Sorry, the ' + meta.apiNoun + ' data failed to load. (' + status + ')');
 					}
 
 					jLoadingSpinner.remove();
+
+					// Detect the overall end, allowing any async load order
+					if(++this.seriesLoaded == total) this.settings.onDataLoaded();
 
 				}, this));
 		},
@@ -243,7 +251,9 @@
 					// Single-log event records
 					format = this.formatVisContent(meta, datum, datum[meta.titleField]);
 
-					if(meta.endDateField){
+					// 'endDateField' is the flag for a pre-ranged-event.
+					// Also check for missing end-date, and place pin, rather than an endless? Or does Vis do this anyway?
+					if(meta.endDateField && datum[meta.endDateField]){
 						// Date-ranged single-log with start-end date
 						this.dsItems.add({
 							id: datum.logId,
@@ -266,11 +276,10 @@
 					}
 				}
 			}
-			// Re-render the timeline, so the popovers will bind.
+			// Re-render the timeline, (else post-processing like popovers won't have anything to bind to).
 			this.timeline.fit(false);
-			// Bind the log/event tooltip/popovers. container:body solves overflow clipping.
-			// @todo assumes Bootstrap2! inject...
-			$('.timeline-popover').popover({html: true, trigger: "hover", placement: "bottom", container: "body"});
+
+			if(meta.onTimelineUpdated) meta.onTimelineUpdated();
 		},
 
 		/**
@@ -287,7 +296,7 @@
 			var content = ''
 				+ '<a class="timeline-popover" '
 				+ ' 	data-content="' + format.content + '" >'
-				+ title
+				+ datum[meta.titleField]
 				+ '<span class="icon icon-info-sign">&nbsp;&nbsp;</span></a>';
 			return {content: content, className: format.className};
 		},
