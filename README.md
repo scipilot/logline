@@ -41,6 +41,7 @@ init options (with defaults):
     CSS.loading: ('loading')          Class which is applied/removed to the spinner during api loading.
     CSS.loader: ('loader')            Class of an element into which the spinner will be appended.
     dataProviders: Array [func, ...]  Callback functions which will return injected data (below)
+	onDataLoaded: function(){}        Callback for when all data series have loaded
 
 You can define a 'loading' CSS class e.g. with a spinner, this is added/removed automatically:
 
@@ -74,7 +75,8 @@ The metadata describing the data has the following properties:
 		logGroups: ['', 'X', 'Y' ...], 	// A list of logGroup (sub-types) found in the logGroupField. Just [''] for logs with no sub-types.
 		groupTitles:{'X':'Foo', ...},	// A map of human titles, indexed by logGroups. Note: instant-events use the event data itself as the title and don't use this!
 		rangedLogs:['Y', ...],  		// Optional; Which of the logGroup sub-types are state-ranged flip-flops. Those not present in this list are treated as instant events.
-		cssClassMap:{'X': 'class', ...} // Optional; map of CSS classes for each logGroup sub-type, applied to the Vis element itself.
+		cssClassMap:{'X': 'class', ...},// Optional; map of CSS classes for each logGroup sub-type, applied to the Vis element itself.
+        onTimelineUpdated:function(){}  // Optional; callback for when this data has been processed into the timeline
 	}
 
 ## Usage
