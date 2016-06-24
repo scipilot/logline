@@ -4,7 +4,7 @@
  * 
  * Requires pluginMaker (my version adapted from Jupiter)
  * 
- * @todo Assumes bootstrap2! (for popover) needs rendering callback?
+ * @todo Display the time-window on the background, to indicate where data is truncated (until infinite load is implemented!)
  */
 (function ($) {
 	// Define plugin class.
@@ -233,31 +233,39 @@
 					// - Time-window "start open" scenarios can be indistinguishable from log-errors.
 					// - We need to scan the state cache at the end of the dataset to detect "never close" and close them off.
 
-					// todo initially I'm just doing the happy path! convert to an FSM?
 					if (datum[meta.stateField] == 1) {
 						// Cache the start
 						eventStates[datum[meta.logGroupField]] = datum;
 					}
 					else {
 						// Assume 0 = off
+
+						format = this.settings.formatContent(meta, datum);
+						visOpt = {
+							id: datum.logId,        													// which Log.ID to use: start or end?
+							group: visGroup,
+							end: datum[meta.dateField],
+							content: format.content,
+							className: format.className ? format.className : '',
+							//type: 'background' // looks OK too
+							// type: 'box' (default), 'point', 'range', or 'background'
+							type: format.type ? format.type : 'range',
+							style: format.style ? format.style : null
+						};
+
+						// Check we have cached an open event to close
 						if (eventStates[datum[meta.logGroupField]]) {
-							format = this.settings.formatContent(meta, datum);
 							// End it and add ranged event to timeline
-							this.dsItems.add({
-								id: datum.logId,        													// which Log.ID to use: start or end?
-								group: visGroup,
-								start: eventStates[datum[meta.logGroupField]][meta.dateField],
-								end: datum[meta.dateField],
-								content: format.content,
-								className: format.className ? format.className : '',
-								 //type: 'background' // looks OK too
-								// type: 'box' (default), 'point', 'range', or 'background'
-								type: format.type ? format.type : 'range',
-								style: format.style ? format.style : null
-							});
+							visOpt.start = eventStates[datum[meta.logGroupField]][meta.dateField];
+							this.dsItems.add(visOpt);
 							eventStates[datum[meta.logGroupField]] = null; //unset? pop? splice?
 						}
-						//TODO: else error / "start-open"
+						else {
+							// Detect error or "start-open" due to window cropping data
+							// Default the start to the search window
+							visOpt.start = this.settings.since;
+							this.dsItems.add(visOpt);
+						}
 					}
 				}
 				else {
@@ -286,6 +294,9 @@
 				}
 			}
 			//TODO: scan remaining eventStates for "never-close" and add them now.
+			$.each(eventStates, function(i,s){
+				console.log("logs remaining open:", s);
+			});
 
 			// Re-render the timeline, (else post-processing like popovers won't have anything to bind to).
 			this.timeline.fit(false);
