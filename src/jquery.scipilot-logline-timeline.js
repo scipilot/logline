@@ -49,7 +49,21 @@
 				'loader': 'loader'
 			},
 			dataProviders: [],
-			onDataLoaded: function(){this.log("All data loaded!");}
+			onDataLoaded: function(){
+				// default/example event handler
+				this.log("All data loaded!");
+			},
+			format: function(meta, datum){
+				// default/example formatter, just put the title or dump the whole log into the timeline
+				var logGroup = meta.logGroupField ? datum[meta.logGroupField] : ''; // '' is default for no grouping
+				var content = datum[meta.titleField];
+				//var content = '<pre>' + JSON.stringify(datum, null, " ").replace(/"/g, '&quot;') + '</pre>';  //pauper's formatter
+
+				return {
+					content: content,
+					className: meta.cssClassMap[logGroup]
+				};
+			}
 		},
 		seriesLoaded: 0, // tracks DP loading progress
 
@@ -189,9 +203,7 @@
 		 * @param meta Object meta-data structure describing the data (see above)
 		 */
 		processLogs: function (data, meta) {
-			var i, datum, eventStates = [], format, visGroup;
-			var aTitles = meta.groupTitles;
-
+			var i, datum, eventStates = [], format, visGroup, visOpt;
 
 			// Parse response, convert to vis.DataSet
 			for (i = 0; i < data.length; i++) {
@@ -229,7 +241,7 @@
 					else {
 						// Assume 0 = off
 						if (eventStates[datum[meta.logGroupField]]) {
-							format = this.formatVisContent(meta, datum, aTitles[datum[meta.logGroupField]]);
+							format = this.settings.formatContent(meta, datum);
 							// End it and add ranged event to timeline
 							this.dsItems.add({
 								id: datum.logId,        													// which Log.ID to use: start or end?
@@ -237,85 +249,48 @@
 								start: eventStates[datum[meta.logGroupField]][meta.dateField],
 								end: datum[meta.dateField],
 								content: format.content,
-								className: format.className
+								className: format.className ? format.className : '',
 								 //type: 'background' // looks OK too
 								// type: 'box' (default), 'point', 'range', or 'background'
-								// style:
+								type: format.type ? format.type : 'range',
+								style: format.style ? format.style : null
 							});
 							eventStates[datum[meta.logGroupField]] = null; //unset? pop? splice?
 						}
-						//else error / "start-open"
+						//TODO: else error / "start-open"
 					}
 				}
 				else {
 					// Single-log event records
-					format = this.formatVisContent(meta, datum, datum[meta.titleField]);
+					format = this.settings.formatContent(meta, datum);
+
+					// Default to Instant event, single date, (e.g. GPS, Periodic, Alarms)
+					visOpt = {
+						id: datum.logId,
+						group: visGroup,
+						start: datum[meta.dateField],
+						content: format.content,
+						className: format.className ? format.className : '',
+						type: format.type ? format.type : 'box',
+						style: format.style ? format.style : null
+					};
 
 					// 'endDateField' is the flag for a pre-ranged-event.
 					// Also check for missing end-date, and place pin, rather than an endless? Or does Vis do this anyway?
 					if(meta.endDateField && datum[meta.endDateField]){
-						// Date-ranged single-log with start-end date
-						this.dsItems.add({
-							id: datum.logId,
-							group: visGroup,
-							start: datum[meta.dateField],
-							end: datum[meta.endDateField],
-							content: format.content,
-							className: format.className
-						});
+						// Date-ranged single-log with start-end date (e.g. Bookings, Incidents)
+						visOpt['end'] = datum[meta.endDateField];
 					}
-					else {
-						// Instant event, single date, (GPS, Periodic, Alarms)
-						this.dsItems.add({
-							id: datum.logId,
-							group: visGroup,
-							start: datum[meta.dateField],
-							content: format.content,
-							className: format.className
-						});
-					}
+
+					this.dsItems.add(visOpt);
 				}
 			}
+			//TODO: scan remaining eventStates for "never-close" and add them now.
+
 			// Re-render the timeline, (else post-processing like popovers won't have anything to bind to).
 			this.timeline.fit(false);
 
 			if(meta.onTimelineUpdated) meta.onTimelineUpdated();
-		},
-
-		/**
-		 * @todo inject a template? or this should be a callback to the page... this JQ plugin shouldn't know about bootstrap.
-		 * @private
-		 * @param meta Object
-		 * @param datum Object log row
-		 * @param title String TODO HTML? SAFE?
-		 * @return Object {content: '<content>', className: '<cssClass>'};
-		 */
-		formatVisContent: function (meta, datum, title) {
-			format = this.formatSpecificLogs(meta, datum);
-			// Uses Bootstrap popover.
-			var content = ''
-				+ '<a class="timeline-popover" '
-				+ ' 	data-content="' + format.content + '" >'
-				+ datum[meta.titleField]
-				+ '<span class="icon icon-info-sign">&nbsp;&nbsp;</span></a>';
-			return {content: content, className: format.className};
-		},
-
-		/**
-		 * This is a log type-specific formatter.
-		 *
-		 * @todo the idea here was to wrap all log types, but I'm now moving towards injecting these dependencies! this may evaporate
-		 *
-		 * @param meta Object
-		 * @param datum Object
-		 */
-		formatSpecificLogs: function (meta, datum) {
-			var logGroup = meta.logGroupField ? datum[meta.logGroupField] : ''; // '' is default for no grouping
-			var content = '<pre>' + JSON.stringify(datum, null, " ").replace(/"/g, '&quot;') + '</pre>';  //pauper's formatter
-			return {
-				content: content,
-				className: meta.cssClassMap[logGroup]
-			};
 		},
 
 		/**

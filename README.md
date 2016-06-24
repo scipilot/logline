@@ -41,7 +41,8 @@ init options (with defaults):
     CSS.loading: ('loading')          Class which is applied/removed to the spinner during api loading.
     CSS.loader: ('loader')            Class of an element into which the spinner will be appended.
     dataProviders: Array [func, ...]  Callback functions which will return injected data (below)
-	onDataLoaded: function(){}        Callback for when all data series have loaded
+	onDataLoaded: function()          Callback for when all data series have loaded
+    format: function(meta, datum)     Callback to format each log for the timeline (below)
 
 You can define a 'loading' CSS class e.g. with a spinner, this is added/removed automatically:
 
@@ -49,6 +50,8 @@ You can define a 'loading' CSS class e.g. with a spinner, this is added/removed 
         background:url(/images/loading.gif) center center no-repeat;
         background-size: 30px;
     }
+
+### Data Injection
 
 You must inject dataProvider functions which are called in turn to fetch the data, and metadata describing how to map the logs into the timeline.
 
@@ -78,6 +81,25 @@ The metadata describing the data has the following properties:
 		cssClassMap:{'X': 'class', ...},// Optional; map of CSS classes for each logGroup sub-type, applied to the Vis element itself.
         onTimelineUpdated:function(){}  // Optional; callback for when this data has been processed into the timeline
 	}
+
+### Content Formatting
+
+Formatting each type of log entry into the timeline is performed by callbacks, with a simple default.
+To override the default, provide a function of this signature which will receive each data row, 
+and a copy of the metadata you provided, (to identify which series you are processing). 
+You must return an HTML rendered block which will be inserted into the vis-content and assigned the class name.   
+
+Optionally, you can override the Vis.js type and any hard-coded CSS styles (not recommended of course!).
+Note: 'type' is set automatically by this plugin to either 'range' or 'box' according to the log type.
+
+    function (meta, datum){
+        return {
+            content: <HTML>,
+            className: <CSS class>,
+            type: ['box' (default) } | 'point' | 'range' | 'background']
+            style: <CSS>
+        };
+     }
 
 ## Usage
 
