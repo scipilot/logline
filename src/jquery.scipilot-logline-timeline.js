@@ -199,11 +199,13 @@
 		/**
 		 * Parses the API response data, scanning for instant-events and ranged-events, adding them to the timeline.
 		 * Handles mixed types and tracks the states of the FSM-ranged-events (single data field, two rows for start-end)
+		 * @todo DRY up the visOpt creation
 		 * @param data Array rows of logs
 		 * @param meta Object meta-data structure describing the data (see above)
 		 */
 		processLogs: function (data, meta) {
-			var i, datum, eventStates = [], format, visGroup, visOpt;
+			// Note: eventStates must be an Object for $.each to work, as its a hash.
+			var i, datum, eventStates = {}, format, visGroup, visOpt;
 
 			// Parse response, convert to vis.DataSet
 			for (i = 0; i < data.length; i++) {
@@ -293,10 +295,27 @@
 					this.dsItems.add(visOpt);
 				}
 			}
-			//TODO: scan remaining eventStates for "never-close" and add them now.
-			$.each(eventStates, function(i,s){
-				console.log("logs remaining open:", s);
-			});
+
+			//TODO: Before finishing up, we need to scan the working cache for unfinished eventStates ("never-closed") and add them now with truncated endings.
+			console.log(typeof(eventStates), eventStates.length, "eventStates:", eventStates);
+			$.each(eventStates, $.proxy(function(i, datum){
+				if(datum){
+					console.log("log remains open:", datum);
+					visGroup = this.getVisGroup(meta.family, datum[meta.logGroupField]);
+					format = this.settings.formatContent(meta, datum);
+					visOpt = {
+						id: datum.logId,        													// which Log.ID to use: start or end?
+						group: visGroup,
+						start: datum[meta.dateField],
+						content: format.content,
+						className: format.className ? format.className : '',
+						type: format.type ? format.type : 'range',
+						style: format.style ? format.style : null
+					};
+					visOpt.end = this.settings.until;
+					this.dsItems.add(visOpt);
+				}
+			}, this));
 
 			// Re-render the timeline, (else post-processing like popovers won't have anything to bind to).
 			this.timeline.fit(false);
