@@ -120,7 +120,7 @@
 		// trace helper/wrapper
 		log: function (message) {
 			if (typeof(console) !== 'undefined') {//IE
-				console.log(message);
+				console.log.apply(console, arguments);
 			}
 			else {
 				this.log += message + "\n";//IE
@@ -242,6 +242,16 @@
 					// - We need to scan the state cache at the end of the dataset to detect "never close" and close them off.
 
 					if (datum[meta.stateField] == 1) {
+						// Check for error / collision in cache
+						if(eventStates[datum[meta.logGroupField]]){
+							// State 1:1
+							// Close prior event with end from this one, then continue with new one.
+							// TODO : perhaps this log should be visually flagged as repaired or modified
+							start = eventStates[datum[meta.logGroupField]][meta.dateField];
+							end = datum[meta.dateField];
+							this.addVisItem(meta, datum, start, end, null);
+							this.log('Timeline warning: A stateful log with no end was detected and closed off. Perhaps a missing end-log? ', datum);
+						}
 						// State [0-]:1
 						// Cache the start
 						eventStates[datum[meta.logGroupField]] = datum;
@@ -261,6 +271,7 @@
 							// State -:0
 							// This is a log error or a "start-open" due to window cropping data
 							// Default the start to the search window
+							// TODO : perhaps this log should be visually flagged as repaired or modified
 							start = this.settings.since;
 						}
 						this.addVisItem(meta, datum, start, end, null);
@@ -276,6 +287,7 @@
 						// Date-ranged single-log with start-end date (e.g. Bookings, Incidents)
 						end = datum[meta.endDateField];
 					}
+					// TODO : perhaps split the conditional, and the log with missing end should be visually flagged as repaired or modified
 
 					// (Send unique subgroup in case it's stacking)
 					this.addVisItem(meta, datum, null, end, iSubGroup++);
@@ -284,6 +296,7 @@
 
 			// To finish up, we need to scan the working cache for unfinished eventStates ("never-closed")
 			// and add them in with truncated endings.
+			// TODO : perhaps this log should be visually flagged as repaired or modified
 			end = this.settings.until;
 			$.each(eventStates, $.proxy(function(i, datum){
 				if(datum){
