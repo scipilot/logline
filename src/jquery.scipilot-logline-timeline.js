@@ -80,9 +80,11 @@
 				// todo: trouble with the height is if the number of groups gets higher, it crops it with no inner scrollbar...
 				//height: window.innerHeight - 200, // todo: calculate, remove header etc. make "full screen" (tried 100%)
 				maxHeight: window.innerHeight, 	// I fixed this which make the UX feel more consistent.
-				stack: false, 					// the timeline seems to make more sense with no stacking, else it gets jumbled.
-				zoomMin: 1000,					// we only have 1s resolution
-				zoomMax: 100000000000, 			// feels reasonable: 3yrs.
+				stack: false, 						// the timeline seems to make more sense with no stacking, else it gets jumbled.
+				zoomMin: 1000,						// we only have 1s resolution
+				zoomMax: 100000000000, 		// feels reasonable: 3yrs.
+				min: this.settings.since,	// with pre-set date range I think it feels better to limit the view to the data period
+				max: this.settings.until	// else the user may think there's just no data. I'd prefer to grey-out the non-loaded area...
 			};
 		},
 
@@ -205,7 +207,7 @@
 		 */
 		processLogs: function (data, meta) {
 			// Note: eventStates must be an Object for $.each to work, as its a hash.
-			var i, datum, eventStates = {}, format, visGroup, visOpt;
+			var i, datum, eventStates = {}, format, visGroup, visOpt, iSubGroup=1;
 
 			// Parse response, convert to vis.DataSet
 			for (i = 0; i < data.length; i++) {
@@ -271,6 +273,8 @@
 					}
 				}
 				else {
+					// todo test addVisItem then delete this, keeping the comments
+
 					// Single-log event records
 					format = this.settings.formatContent(meta, datum);
 
@@ -285,14 +289,18 @@
 						style: format.style ? format.style : null
 					};
 
+					var end = null;
 					// 'endDateField' is the flag for a pre-ranged-event.
 					// Also check for missing end-date, and place pin, rather than an endless? Or does Vis do this anyway?
 					if(meta.endDateField && datum[meta.endDateField]){
 						// Date-ranged single-log with start-end date (e.g. Bookings, Incidents)
-						visOpt['end'] = datum[meta.endDateField];
+						end = datum[meta.endDateField];
 					}
+					//visOpt.end = end;
 
-					this.dsItems.add(visOpt);
+					//this.dsItems.add(visOpt);
+
+					this.addVisItem(meta, datum, null, end, iSubGroup++);
 				}
 			}
 
@@ -321,6 +329,38 @@
 			this.timeline.fit(false);
 
 			if(meta.onTimelineUpdated) meta.onTimelineUpdated();
+		},
+
+		/**
+		 * Helper function to produce the Vis Item options and add it to the timeline
+		 * @private
+		 */
+		addVisItem: function(meta, datum, start, end, iSubGroup) {
+			var type = 'box';
+			var visGroup = this.getVisGroup(meta.family, datum[meta.logGroupField]);
+			var format = this.settings.formatContent(meta, datum);
+
+			// Default to Instant event, single date, (e.g. GPS, Periodic, Alarms)
+			visOpt = {
+				id: datum.logId,
+				group: visGroup,
+				start: start ? start : datum[meta.dateField],
+				content: format.content,
+				className: format.className ? format.className : '',
+				style: format.style ? format.style : null,
+			};
+
+			// fake subgrouping allows stacking per-group :)
+			if(meta.stack)	visOpt.subgroup = iSubGroup;
+
+			if(end){
+				visOpt.end = end;
+				type = 'range';
+			}
+			visOpt.type = format.type ? format.type : type;
+
+			this.dsItems.add(visOpt);
+
 		},
 
 		/**
