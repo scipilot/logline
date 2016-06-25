@@ -208,15 +208,19 @@
 		processLogs: function (data, meta) {
 			// Note: eventStates must be an Object for $.each to work, as its a hash.
 			var i, datum, eventStates = {}, format, visGroup, visOpt, iSubGroup=1;
+			var end = null, start = null;
 
 			// Parse response, convert to vis.DataSet
 			for (i = 0; i < data.length; i++) {
 				datum = data[i];
 				visGroup = this.getVisGroup(meta.family, datum[meta.logGroupField]);
+				end = null;
+				start = null;
 
-				// todo move to a processor helper/strategy?
-				// Check for state-ranged time-span events, (Ignition states, Sessions)
+				// If this log group is defined as a ranged-log,
+				// Check for "state-ranged" time-span events, with a log per state transition (e.g. Key states, Sessions)
 				if (meta.rangedLogs && meta.rangedLogs.indexOf(datum[meta.logGroupField]) != -1) {
+
 					// 1 starts it, 0 ends it. Note it may "start open" or "never close", in the time window.
 					// Truth table: - = no state recorded, 0/1 = state previously recorded
 					// State	Receive 	Scenario 					Action
@@ -238,102 +242,70 @@
 					// - We need to scan the state cache at the end of the dataset to detect "never close" and close them off.
 
 					if (datum[meta.stateField] == 1) {
+						// State [0-]:1
 						// Cache the start
 						eventStates[datum[meta.logGroupField]] = datum;
 					}
 					else {
-						// Assume 0 = off
+						// Assume 0 = off/end
+						end = datum[meta.dateField];
 
-						format = this.settings.formatContent(meta, datum);
-						visOpt = {
-							id: datum.logId,        													// which Log.ID to use: start or end?
-							group: visGroup,
-							end: datum[meta.dateField],
-							content: format.content,
-							className: format.className ? format.className : '',
-							//type: 'background' // looks OK too
-							// type: 'box' (default), 'point', 'range', or 'background'
-							type: format.type ? format.type : 'range',
-							style: format.style ? format.style : null
-						};
-
-						// Check we have cached an open event to close
+						// Check we have a cached open event to close
 						if (eventStates[datum[meta.logGroupField]]) {
+							// State 1:0
 							// End it and add ranged event to timeline
-							visOpt.start = eventStates[datum[meta.logGroupField]][meta.dateField];
-							this.dsItems.add(visOpt);
+							start = eventStates[datum[meta.logGroupField]][meta.dateField];
 							eventStates[datum[meta.logGroupField]] = null; //unset? pop? splice?
 						}
 						else {
-							// Detect error or "start-open" due to window cropping data
+							// State -:0
+							// This is a log error or a "start-open" due to window cropping data
 							// Default the start to the search window
-							visOpt.start = this.settings.since;
-							this.dsItems.add(visOpt);
+							start = this.settings.since;
 						}
+						this.addVisItem(meta, datum, start, end, null);
 					}
 				}
 				else {
-					// todo test addVisItem then delete this, keeping the comments
-
 					// Single-log event records
-					format = this.settings.formatContent(meta, datum);
+					// Default to instant-event, single date, (e.g. GPS, Periodic, Alarms)
 
-					// Default to Instant event, single date, (e.g. GPS, Periodic, Alarms)
-					visOpt = {
-						id: datum.logId,
-						group: visGroup,
-						start: datum[meta.dateField],
-						content: format.content,
-						className: format.className ? format.className : '',
-						type: format.type ? format.type : 'box',
-						style: format.style ? format.style : null
-					};
-
-					var end = null;
-					// 'endDateField' is the flag for a pre-ranged-event.
-					// Also check for missing end-date, and place pin, rather than an endless? Or does Vis do this anyway?
+					// Check for for a pre-ranged events which will have the 'endDateField' set.
+					// Also validate missing end-date, and fall back to pin rather than an endless range. (Or does Vis do that anyway?)
 					if(meta.endDateField && datum[meta.endDateField]){
 						// Date-ranged single-log with start-end date (e.g. Bookings, Incidents)
 						end = datum[meta.endDateField];
 					}
-					//visOpt.end = end;
 
-					//this.dsItems.add(visOpt);
-
+					// (Send unique subgroup in case it's stacking)
 					this.addVisItem(meta, datum, null, end, iSubGroup++);
 				}
 			}
 
-			//TODO: Before finishing up, we need to scan the working cache for unfinished eventStates ("never-closed") and add them now with truncated endings.
-			console.log(typeof(eventStates), eventStates.length, "eventStates:", eventStates);
+			// To finish up, we need to scan the working cache for unfinished eventStates ("never-closed")
+			// and add them in with truncated endings.
+			end = this.settings.until;
 			$.each(eventStates, $.proxy(function(i, datum){
 				if(datum){
-					console.log("log remains open:", datum);
-					visGroup = this.getVisGroup(meta.family, datum[meta.logGroupField]);
-					format = this.settings.formatContent(meta, datum);
-					visOpt = {
-						id: datum.logId,        													// which Log.ID to use: start or end?
-						group: visGroup,
-						start: datum[meta.dateField],
-						content: format.content,
-						className: format.className ? format.className : '',
-						type: format.type ? format.type : 'range',
-						style: format.style ? format.style : null
-					};
-					visOpt.end = this.settings.until;
-					this.dsItems.add(visOpt);
+					this.addVisItem(meta, datum, null, end, null);
 				}
 			}, this));
 
 			// Re-render the timeline, (else post-processing like popovers won't have anything to bind to).
 			this.timeline.fit(false);
 
+			// Fire event
 			if(meta.onTimelineUpdated) meta.onTimelineUpdated();
 		},
 
 		/**
 		 * Helper function to produce the Vis Item options and add it to the timeline
 		 * @private
+		 * @param meta Object
+		 * @param datum Object
+		 * @param start String Optional; Date string to override the date field.
+		 * @param end String Optional; Send a date string to set an end date and make it a range.
+		 * @param iSubGroup int Optional; If meta.stack is set, send unique IDs to separate items into stacked sub-groups.
 		 */
 		addVisItem: function(meta, datum, start, end, iSubGroup) {
 			var type = 'box';
@@ -350,7 +322,7 @@
 				style: format.style ? format.style : null,
 			};
 
-			// fake subgrouping allows stacking per-group :)
+			// fake sub-grouping allows stacking per-group :)
 			if(meta.stack)	visOpt.subgroup = iSubGroup;
 
 			if(end){
