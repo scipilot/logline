@@ -75,13 +75,14 @@
 
 		// Plugin instance initialisation and configuration
 		init: function (el, options) {
+			// default (Have to scope this in advance, and need to wait until init before this is set)
+			this.settings.onDataLoaded = $.proxy(this.onDataLoadedDefault, this);
+
 			// If options exist, merge them with a copy of the defaults into our instance settings
 			if (options) {
 				this.settings = $.extend({}, this.defaults);
 				$.extend(this.settings, options);
 			}
-			// (Have to scope this in advance, and need to wait until init before this is set)
-			this.settings.onDataLoaded = $.proxy(this.onDataLoadedDefault, this),
 
 			// Timeline configuration
 			this.timelineOptions = {
