@@ -56,7 +56,10 @@
 
       <div class="welcome">
         <h1>Log Data Visualisation using Vis.js loaded by LogLine</h1>
+        <h2>Basic Ranged Events</h2>
         <div id="timeline-demo1"></div>
+        <h2>Statefully Ranged Events</h2>
+        <div id="timeline-demo2"></div>
       </div>
 
     </div><!-- /.container -->
@@ -94,12 +97,17 @@ $(function(){
 			{logId:		1, 
 				start:	'2016-06-20T10:00:00+10:00',
 				end:	'2016-06-21T08:00:00+10:00',
-				title:	'Discuss epics'
+				title:	'Discussed epics'
 			},
 			{logId:		2, 
 				start:	'2016-06-21T09:00:00+10:00',
-				end:	'2016-06-22T10:00:00+10:00',
-				title:	'Discuss budget'
+				end:	'2016-06-21T10:00:00+10:00',
+				title:	'Discussed budget'
+			},
+			{logId:		3, 
+				start:	'2016-06-24T14:00:00+10:00',
+				end:	'2016-06-24T15:00:00+10:00',
+				title:	'Discussed coffee breaks'
 			},
 		];
 		// Send the data back to the timeline
@@ -108,11 +116,76 @@ $(function(){
 				family: 'D1',
 				dateField:'start', endDateField:'end',	// pre-ranged entities with two dates in one log
 				titleField: 'title',
-				logGroups: [''], 						// no types (all type are the same)
-				groupTitles:{'':'Meetings'},
-				cssClassMap:{'':'warning'},
-				// stack: true
-				//	onTimelineUpdated: onTimelineUpdated
+				//logGroups: [''], 						// no types (all type are the same)
+				groupTitles:{'':'Phone Calls'},
+				cssClassMap:{'':'info'},
+			},
+			data: data
+		});
+	}
+	// Initialise plugin from context (config, params from UI controls)
+	var jSPTimeline = $('#timeline-demo2');
+	jSPTimeline.scipilot_logline({
+			// API:{URL:				'//<?=$viewModel->apiUrl?>'}, 
+			unitId: 1,
+			since:  '2016-06-20T08:00:00+10:00',
+			until:  '2016-06-26T08:00:00+10:00',
+			dataProviders: [dpDemo2],
+		})
+		.scipilot_logline('load');
+
+	// Data-provider 2, an example of statefully ranged logs, with separate start and end events. 
+	function dpDemo2(unitId, since, until, callback){
+
+		// This would be loaded by your ViewModel or API call
+		// Note how these aren't in a "nice" order, the plugin can handle any order.
+		var data = [
+			{logId:		1, 
+				date:	'2016-06-20T10:00:00+10:00',
+				type: '',
+				state:	1
+			},
+			{logId:		2, 
+				date:	'2016-06-21T08:00:00+10:00',
+				title:	'Discussed epics',
+				type: '',
+				state:	0
+			},
+			{logId:		3, 
+				date:	'2016-06-21T09:00:00+10:00',
+				type: '',
+				state:	1
+			},
+			{logId:		4, 
+				date:	'2016-06-21T10:00:00+10:00',
+				title:	'Discussed budget',
+				type: '',
+				state:	0
+			},
+			{logId:		5, 
+				date:	'2016-06-24T14:00:00+10:00',
+				type: '',
+				state:	1
+			},
+			{logId:		6, 
+				date:	'2016-06-24T15:00:00+10:00',
+				title:	'Discussed mandatory coffee breaks',
+				type: '',
+				state:	0
+			}
+		];
+		// Send the data back to the timeline
+		callback('success',{
+			meta:{
+				family: 'D2',
+				dateField:'date',						// state-ranged entities with one dates in two logs
+				stateField:'state',					// state-ranged entities with one dates in two logs
+				titleField: 'title',				// title is taken from the End log
+				logGroups: [''], 						// no log groups, but still need to specify it (ATM) 
+				logGroupField: 'type',			// 
+				rangedLogs: [''], 					// default logs are ranged.
+				groupTitles:{'':'Phone Calls'},
+				cssClassMap:{'':'info'},
 			},
 			data: data
 		});

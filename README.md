@@ -119,3 +119,7 @@ e.g.
 		})
     .scipilot_logline('load');
 
+## Demos
+ 
+ See demo/index.html for examples.
+ 
