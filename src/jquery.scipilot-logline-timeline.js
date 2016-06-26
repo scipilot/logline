@@ -9,6 +9,7 @@
  * @todo trouble with the height
  * @todo 'family' could be internally generated on data injection, it's just an index and the user doesn't care about it.
  * @todo Repaired or modified logs should be visually flagged.
+ * @todo Split into core logic and JQuery plugin wrapper, so it can be used independently of JQuery
  */
 (function ($) {
 	// Define plugin class.
@@ -53,10 +54,6 @@
 				'loader': 'loader'
 			},
 			dataProviders: [],
-			onDataLoaded: function(){
-				// default/example event handler
-				this.log("All data loaded!");
-			},
 			format: function(meta, datum){
 				// default/example formatter, just put the title or dump the whole log into the timeline
 				var logGroup = meta.logGroupField ? datum[meta.logGroupField] : ''; // '' is default for no grouping
@@ -71,6 +68,11 @@
 		},
 		seriesLoaded: 0, // tracks DP loading progress
 
+		// default/example event handler
+		onDataLoadedDefault: function(){
+			this.log("All data loaded!");
+		},
+
 		// Plugin instance initialisation and configuration
 		init: function (el, options) {
 			// If options exist, merge them with a copy of the defaults into our instance settings
@@ -78,6 +80,8 @@
 				this.settings = $.extend({}, this.defaults);
 				$.extend(this.settings, options);
 			}
+			// (Have to scope this in advance, and need to wait until init before this is set)
+			this.settings.onDataLoaded = $.proxy(this.onDataLoadedDefault, this),
 
 			// Timeline configuration
 			this.timelineOptions = {
@@ -92,7 +96,7 @@
 			};
 		},
 
-/*
+/* RETIRE
 		// @private call this before processing after adding all families. Can be re-called.
 		// @see getVisGroup() to recalculate these Group Index on the fly.
 		indexFamilyToGroup: function () {
@@ -325,7 +329,7 @@
 		addVisItem: function(meta, datum, start, end, iSubGroup) {
 			var type = 'box', visOpt;
 			var visGroup = this.getVisGroup(meta.family, datum[meta.logGroupField]);
-			var format = this.settings.formatContent(meta, datum);
+			var format = this.settings.format(meta, datum);
 
 			// Default to Instant event, single date, (e.g. GPS, Periodic, Alarms)
 			visOpt = {
