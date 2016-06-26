@@ -5,6 +5,10 @@
  * Requires pluginMaker (my version adapted from Jupiter)
  * 
  * @todo Display the time-window on the background, to indicate where data is truncated (until infinite load is implemented!)
+ * @todo add UI group ordering to metadata? currently it's load sequence order
+ * @todo trouble with the height
+ * @todo 'family' could be internally generated on data injection, it's just an index and the user doesn't care about it.
+ * @todo Repaired or modified logs should be visually flagged.
  */
 (function ($) {
 	// Define plugin class.
@@ -88,6 +92,7 @@
 			};
 		},
 
+/*
 		// @private call this before processing after adding all families. Can be re-called.
 		// @see getVisGroup() to recalculate these Group Index on the fly.
 		indexFamilyToGroup: function () {
@@ -104,6 +109,7 @@
 				});
 			});
 		},
+*/
 
 		// @private call this before processing after adding all families. Can be re-called.
 		// @see getVisGroup() to recalculate these Group Index on the fly.
@@ -111,7 +117,6 @@
 			// Add groups together indexed via family+log group id (to differentiate e.g. 'S').
 			$.each(meta.logGroups, $.proxy(function (j, g) {
 				var id = meta.family + '.' + g;
-				// todo add UI group ordering to metadata? currently it's load sequence order
 				this.dsGroups.add({id: id, content: meta.groupTitles[g], order: this.aLogGroupIndex.length});
 				this.aLogGroupIndex[id] = this.dsGroups.length;
 			}, this));
@@ -138,7 +143,6 @@
 			this.dsItems = new vis.DataSet();
 			this.dsGroups = new vis.DataSet();
 
-			// todo: use timeline strategy pattern, to enable switch to CHAPS-LINK for clustering, or other library?
 			this.timeline = new vis.Timeline(this.element.get(0), this.dsItems, this.dsGroups, this.timelineOptions);
 
 			// Load the data mashup list
@@ -149,20 +153,19 @@
 		},
 
 		/**
-		 * @todo define injection pattern (ie. wrap this class in another with the TM injections?)
-		 *
 		 * @param meta Object {family: 'X', logGroupField:'', stateField:'', dateField:'', logGroups: ['',...], groupTitles:{'':'', ...},
 		 * 	rangedLogs:{'':'', ...},  cssClassMap:{'':'', ...} }
 		 */
 		injectMetaData: function (meta) {
-			// todo 'family' could be locally generated on-injection, it's just an index.
+
 			this.aFamilies.push(meta.family);
 			this.aLogGroups[meta.family] = meta.logGroups;
 			this.aGroupTitles[meta.family] = meta.groupTitles;
 			this.aCssClassMap[meta.family] = meta.cssClassMap;
 
 			// meta reindex this.aLogGroupIndex
-			this.indexFamilyToGroup();
+			//this.indexFamilyToGroup();
+			this.indexGroup(meta);
 		},
 
 		/**
@@ -187,7 +190,7 @@
 						this.processLogs(data.data, data.meta);
 					}
 					else {
-						alert('Sorry, the ' + meta.apiNoun + ' data failed to load. (' + status + ')');
+						alert('Sorry, the ' + data.meta.apiNoun + ' data failed to load. (' + status + ')');
 					}
 
 					jLoadingSpinner.remove();
@@ -201,13 +204,12 @@
 		/**
 		 * Parses the API response data, scanning for instant-events and ranged-events, adding them to the timeline.
 		 * Handles mixed types and tracks the states of the FSM-ranged-events (single data field, two rows for start-end)
-		 * @todo DRY up the visOpt creation
 		 * @param data Array rows of logs
 		 * @param meta Object meta-data structure describing the data (see above)
 		 */
 		processLogs: function (data, meta) {
 			// Note: eventStates must be an Object for $.each to work, as its a hash.
-			var i, datum, eventStates = {}, format, visGroup, visOpt, iSubGroup=1;
+			var i, datum, eventStates = {}, visGroup, iSubGroup=1;
 			var end = null, start = null;
 
 			// Parse response, convert to vis.DataSet
@@ -321,7 +323,7 @@
 		 * @param iSubGroup int Optional; If meta.stack is set, send unique IDs to separate items into stacked sub-groups.
 		 */
 		addVisItem: function(meta, datum, start, end, iSubGroup) {
-			var type = 'box';
+			var type = 'box', visOpt;
 			var visGroup = this.getVisGroup(meta.family, datum[meta.logGroupField]);
 			var format = this.settings.formatContent(meta, datum);
 
@@ -332,7 +334,7 @@
 				start: start ? start : datum[meta.dateField],
 				content: format.content,
 				className: format.className ? format.className : '',
-				style: format.style ? format.style : null,
+				style: format.style ? format.style : null
 			};
 
 			// fake sub-grouping allows stacking per-group :)
