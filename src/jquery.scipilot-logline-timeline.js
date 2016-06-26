@@ -119,11 +119,13 @@
 		// @see getVisGroup() to recalculate these Group Index on the fly.
 		indexGroup: function (meta) {
 			// Add groups together indexed via family+log group id (to differentiate e.g. 'S').
-			$.each(meta.logGroups, $.proxy(function (j, g) {
-				var id = meta.family + '.' + g;
-				this.dsGroups.add({id: id, content: meta.groupTitles[g], order: this.aLogGroupIndex.length});
-				this.aLogGroupIndex[id] = this.dsGroups.length;
-			}, this));
+			if(meta.logGroups){
+				$.each(meta.logGroups, $.proxy(function (j, g) {
+					var id = meta.family + '.' + g;
+					this.dsGroups.add({id: id, content: meta.groupTitles[g], order: this.aLogGroupIndex.length});
+					this.aLogGroupIndex[id] = this.dsGroups.length;
+				}, this));
+			}
 		},
 
 		// trace helper/wrapper
@@ -162,10 +164,11 @@
 		 */
 		injectMetaData: function (meta) {
 
-			this.aFamilies.push(meta.family);
-			this.aLogGroups[meta.family] = meta.logGroups;
-			this.aGroupTitles[meta.family] = meta.groupTitles;
-			this.aCssClassMap[meta.family] = meta.cssClassMap;
+			//RETIRE this.aFamilies.push(meta.family);
+			meta.logGroups = meta.logGroups ? meta.logGroups : ['']; // default to one subgroup, and "correct" the metadata (by reference)
+			//RETIRE this.aLogGroups[meta.family] = meta.logGroups;
+			//RETIRE this.aGroupTitles[meta.family] = meta.groupTitles;
+			//RETIRE this.aCssClassMap[meta.family] = meta.cssClassMap;
 
 			// meta reindex this.aLogGroupIndex
 			//this.indexFamilyToGroup();
