@@ -76,7 +76,7 @@
 		// Plugin instance initialisation and configuration
 		init: function (el, options) {
 			// default (Have to scope this in advance, and need to wait until init before this is set)
-			this.settings.onDataLoaded = $.proxy(this.onDataLoadedDefault, this);
+			this.defaults.onDataLoaded = $.proxy(this.onDataLoadedDefault, this);
 
 			// If options exist, merge them with a copy of the defaults into our instance settings
 			if (options) {
