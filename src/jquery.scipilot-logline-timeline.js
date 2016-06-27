@@ -337,7 +337,7 @@
 
 			// Default to Instant event, single date, (e.g. GPS, Periodic, Alarms)
 			visOpt = {
-				id: datum.logId,
+				id: meta.family + datum.logId,
 				group: visGroup,
 				start: start ? start : datum[meta.dateField],
 				content: format.content,
