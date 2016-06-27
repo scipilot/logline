@@ -98,7 +98,8 @@ The metadata describing the data has the following properties:
 
 Each data provider can return mixed logs of same structure but in different logical groups (e.g. different events, or categories).
 
-The `logGroupField` must be a field in the data rows which identifies each log's type. These types are internally collated into Vis Groups.  
+The `logGroupField` must be a field in the data rows which identifies each log's type/sub-type/group/category (whatever you call it!). 
+These types are internally collated into Vis Timeline Groups. They are un-stacked by default, but you can override that per data-provider.
 
 The `logGroups` lists "known groups" and used to look up a few other maps (hashes).
 
