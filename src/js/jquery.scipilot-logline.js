@@ -1,6 +1,7 @@
 /**
  * @author Pip Jones
  * @since  10/06/2016
+ * @see https://github.com/scipilot/logline
  * 
  * Requires pluginMaker (my version adapted from Jupiter)
  * 

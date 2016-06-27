@@ -1,6 +1,6 @@
 {
   "name": "vis-logline",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A Vis.js Timeline wrapper to display log data from various formats and customised providers.",
   "main": "jquery.scipilot-logline-timeline.js",
   "scripts": {
@@ -19,5 +19,13 @@
   "bugs": {
     "url": "https://github.com/scipilot/logline/issues"
   },
-  "homepage": "https://github.com/scipilot/logline"
+  "homepage": "https://github.com/scipilot/logline",
+  "dependencies": {
+    "event-stream": "^3.3.3",
+    "gulp": "^3.9.1",
+    "gulp-concat": "^2.6.0",
+    "gulp-rename": "^1.2.2",
+    "gulp-uglify": "^1.5.4",
+    "main-bower-files": "^2.13.1"
+  }
 }
