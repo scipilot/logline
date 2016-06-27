@@ -1,6 +1,6 @@
 {
-  "name": "logline",
-  "description": "A vis.js Timeline wrapper to display log data from various formats and customised providers.",
+  "name": "vis-logline",
+  "description": "A Vis.js Timeline wrapper to display log data from various formats and customised providers.",
   "main": "jquery.scipilot-logline-timeline.js",
   "authors": [
     "Pip Jones"
@@ -17,5 +17,8 @@
     "bower_components",
     "test",
     "tests"
-  ]
+  ],
+  "dependencies": {
+    "vis": "^4.16.1"
+  }
 }
