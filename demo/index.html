@@ -1,0 +1,319 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Timeline Demo</title>
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+	<link rel="stylesheet" href="vis/vis.min.css">
+	<style>
+	body {
+		padding-top: 50px;
+	}
+	.welcome {
+		padding: 40px 15px;
+		text-align: center;
+	}
+	</style>
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">LogLine</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="#">Demo</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+
+      <div class="welcome">
+        <h1>Log Data Visualisation using <a href="http://visjs.org/">Vis.js Timeline</a> loaded by <a href="https://github.com/scipilot/logline">LogLine</a></h1>
+				<mark>View the page source for more details on these example scenarios.</mark>
+        <h2>Basic Ranged Events</h2>
+        <div id="timeline-demo1"></div>
+        <h2>Statefully Ranged Events</h2>
+				<p>Shows how quite differently formatted log data can be made to look the same.
+        <div id="timeline-demo2"></div>
+        <h2>Multiple data sources, logs types, groups in one chart. With formatting and popovers.</h2>
+				<p>Reloads the same datasets above, plus technical detail e.g. from a subsystem dataprovider, demonstrating mixed data types.
+					Also shows how to format items in event handler callbacks.
+        <div id="timeline-demo3"></div>
+      </div>
+
+    </div><!-- /.container -->
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>	
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+    <script src="../../assets/js/ie10-viewport-bug-workaround.js"></script>
+	<script src="jquery.pluginmaker.js"></script>
+	<script src="vis/vis.min.js"></script>
+	<script src="../src/jquery.scipilot-logline-timeline.js"></script>
+
+
+<script>
+$(function(){
+
+	// DEMO 1 -------------------------------------------------------------
+
+	// Initialise plugin from context (config, params from UI controls)
+	var jSPTimeline = $('#timeline-demo1');
+	jSPTimeline.scipilot_logline({
+			unitId: 1,
+			since:  '2016-06-20T08:00:00+10:00',
+			until:  '2016-06-26T08:00:00+10:00',
+			dataProviders: [dpDemo1],
+		})
+		.scipilot_logline('load');
+
+	// Data-provider 1, just a simple set of ranged events: e.g. meetings.
+	function dpDemo1(unitId, since, until, callback){
+
+		// This would be loaded by your ViewModel or API call
+		var data = [
+			{logId:		1, 
+				start:	'2016-06-20T10:00:00+10:00',
+				end:	'2016-06-21T08:00:00+10:00',
+				title:	'Discussed epics'
+			},
+			{logId:		2, 
+				start:	'2016-06-21T09:00:00+10:00',
+				end:	'2016-06-21T10:00:00+10:00',
+				title:	'Discussed budget'
+			},
+			{logId:		3, 
+				start:	'2016-06-24T14:00:00+10:00',
+				end:	'2016-06-24T15:00:00+10:00',
+				title:	'Discussed coffee breaks'
+			},
+		];
+		// Send the data back to the timeline
+		callback('success',{
+			meta:{
+				family: 'D1',
+				dateField:'start', endDateField:'end',	// pre-ranged entities with two dates in one log
+				titleField: 'title',
+				//logGroups: [''], 						// no types (all type are the same)
+				groupTitles:{'':'Phone Calls'},
+				cssClassMap:{'':'info'},
+			},
+			data: data
+		});
+	}
+
+	// DEMO 2 -------------------------------------------------------------
+
+	// Initialise plugin from context (config, params from UI controls)
+	var jSPTimeline = $('#timeline-demo2');
+	jSPTimeline.scipilot_logline({
+			// API:{URL:				'//<?=$viewModel->apiUrl?>'}, 
+			unitId: 1,
+			since:  '2016-06-20T08:00:00+10:00',
+			until:  '2016-06-26T08:00:00+10:00',
+			dataProviders: [dpDemo2],
+		})
+		.scipilot_logline('load');
+
+	// Data-provider 2, an example of statefully ranged logs, with separate start and end events. 
+	function dpDemo2(unitId, since, until, callback){
+
+		// This would be loaded by your ViewModel or API call
+		// Note how these aren't in a "nice" order, the plugin can handle any order.
+		var data = [
+			{logId:		1, 
+				date:	'2016-06-20T10:00:00+10:00',
+				type: '',
+				state:	1
+			},
+			{logId:		2, 
+				date:	'2016-06-21T08:00:00+10:00',
+				title:	'Discussed 2 epics',
+				type: '',
+				state:	0
+			},
+			{logId:		3, 
+				date:	'2016-06-21T09:00:00+10:00',
+				type: '',
+				state:	1
+			},
+			{logId:		4, 
+				date:	'2016-06-21T10:00:00+10:00',
+				title:	'Discussed 2 budget',
+				type: '',
+				state:	0
+			},
+			{logId:		5, 
+				date:	'2016-06-24T14:00:00+10:00',
+				type: '',
+				state:	1
+			},
+			{logId:		6, 
+				date:	'2016-06-24T15:00:00+10:00',
+				title:	'Discussed 2 mandatory coffee breaks',
+				type: '',
+				state:	0
+			}
+		];
+		// Send the data back to the timeline
+		callback('success',{
+			meta:{
+				family: 'D2',
+				dateField:'date',						// state-ranged entities with one dates in two logs
+				stateField:'state',					// state-ranged entities with one dates in two logs
+				titleField: 'title',				// title is taken from the End log
+				logGroups: [''], 						// no log groups, but still need to specify it (ATM) 
+				logGroupField: 'type',			// 
+				rangedLogs: [''], 					// default logs are ranged.
+				groupTitles:{'':'Phone Calls'},
+				cssClassMap:{'':'info'},
+			},
+			data: data
+		});
+	}
+
+	// DEMO 3 -------------------------------------------------------------
+
+	// Initialise plugin from context (config, params from UI controls)
+	var jSPTimeline = $('#timeline-demo3');
+	jSPTimeline.scipilot_logline({
+			// API:{URL:				'//<?=$viewModel->apiUrl?>'}, 
+			unitId: 1,
+			since:  '2016-06-20T08:00:00+10:00',
+			until:  '2016-06-26T08:00:00+10:00',
+			dataProviders: [dpDemo1, dpDemo2, dpDemo3],
+			onDataLoaded: onDataLoaded,											// Add in an event handler to add tool tips
+			format: formatVisContent												// Formatter for items
+		})
+		.scipilot_logline('load');
+
+	// Data-provider 2, an example of statefully ranged logs, with separate start and end events. 
+	function dpDemo3(unitId, since, until, callback){
+
+		// Demonstrates mixed data from different systems, fieldnames have been normalised already (by API transformer or data-mapper).
+		// Note additional data fields are	 ignored by the system, but can be used in your formatter callbacks.
+		var data = [
+			{logId:		1, 
+				date:	'2016-06-20T10:00:00+10:00',
+				callerId:	'0412345678',
+				type: 'A',
+				state:	1
+			},
+			{logId:		2, 
+				date:	'2016-06-21T08:00:00+10:00',
+				callerId:	'0412345678',
+				duration:	'01:02:34',
+				otherData: 'Foo',
+				type: 'A',
+				state:	0
+			},
+			{logId:		3, 
+				date:	'2016-06-21T09:00:00+10:00',
+				callerId:	'Skype Call from 123.456.789',
+				type: 'B',
+				state:	1
+			},
+			{logId:		4, 
+				date:	'2016-06-21T10:00:00+10:00',
+				callerId:	'Skype Call from 123.456.789',
+				duration:	'01:02:34',
+				otherData: 'Bar',
+				type: 'B',
+				state:	0
+			},
+			{logId:		5, 
+				date:	'2016-06-24T14:00:00+10:00',
+				endDate:	'2016-06-24T15:00:00+10:00',
+				type: 'C',
+				callerId:	'Ext 256',
+			},
+			{logId:		6, 
+				date:	'2016-06-21T08:44:00+10:00',
+				callerId:	'Some unknown log error',
+				code: 123,
+				otherUnknownData: 'WTF',
+				type: 'Z?'   // broken / unclassified
+			},
+			{logId:		7, 
+				date:	'2016-06-22T18:25:00+10:00',
+				callerId:	'Connection Error',
+				code: 256,
+				randomField: 'stuff',
+				type: 'D'
+			}
+		];
+		// Send the data back to the timeline
+		callback('success',{
+			meta:{
+				family: 'D3',
+				dateField:'date',									// Start for pre-ranged, both for state-ranged
+				endDateField:'endDate',						// End   for pre-ranged (not used for state-ranged) 
+				stateField:'state',								// For state-ranged logs, this is the flip-flop field 
+				rangedLogs: ['A', 'B'], 					// Some logs are state-ranged. The others are treated as instant or pre-ranged.
+				titleField: 'callerId',						// Pick the best field for the user viewing the logs
+				logGroups: ['','A', 'B','C','D'], // Declare known groups plus '' for catch-all 
+				logGroupField: 'type',						// 
+				groupTitles:{'A':'PTSN', 'B': 'VOIP', 'C': 'PABX Calls', 'D':'PABX Errors'},
+				cssClassMap:{'':'info', 'D': 'error'}
+			},
+			data: data
+		});
+	}
+
+	/**
+	 * @private
+	 * @param meta Object
+	 * @param datum Object log row
+	 * @return Object {content: '<content>', className: '<cssClass>'};
+	 */
+	 function formatVisContent(meta, datum) {
+		var logGroup = meta.logGroupField ? datum[meta.logGroupField] : ''; // '' is default for no grouping
+		var content = '<pre>' + JSON.stringify(datum, null, " ").replace(/"/g, '&quot;') + '</pre>';  //pauper's formatter
+		// Uses Bootstrap popover.
+		content = ''
+			+ '<a class="timeline-popover" '
+			+ ' 	data-content="' + content + '" >'
+			+ datum[meta.titleField]
+			+ '<span class="glyphicon glyphicon-info-sign">&nbsp;&nbsp;</span></a>';
+		return {content: content, className: meta.cssClassMap[logGroup]};
+	}
+
+	// Event handler for post-processing the timeline - after all data is loaded.
+	function onDataLoaded(){
+		// Bind the log/event tooltip/popovers. container:body solves overflow clipping.
+		$('#timeline-demo3 .timeline-popover').popover({html: true, trigger: "hover", placement: "bottom", container: "body"});
+	}
+
+})
+
+</script>
+
+  </body>
+</html>
