@@ -56,10 +56,16 @@
 
       <div class="welcome">
         <h1>Log Data Visualisation using Vis.js loaded by LogLine</h1>
+				<mark>View the source for more details.</mark>
         <h2>Basic Ranged Events</h2>
         <div id="timeline-demo1"></div>
         <h2>Statefully Ranged Events</h2>
+				<p>Shows how quite differently formatted log data can be made to look the same.
         <div id="timeline-demo2"></div>
+        <h2>Multiple data sources, logs types, groups in one chart. With formatting and popovers.</h2>
+				<p>Reloads the same datasets above, plus technical detail e.g. from a subsystem dataprovider, demonstrating mixed data types.
+					Also shows how to format items in event handler callbacks.
+        <div id="timeline-demo3"></div>
       </div>
 
     </div><!-- /.container -->
@@ -75,17 +81,16 @@
 
 <script>
 $(function(){
+
+	// DEMO 1 -------------------------------------------------------------
+
 	// Initialise plugin from context (config, params from UI controls)
 	var jSPTimeline = $('#timeline-demo1');
 	jSPTimeline.scipilot_logline({
-			// API:{URL:				'//<?=$viewModel->apiUrl?>'}, 
 			unitId: 1,
 			since:  '2016-06-20T08:00:00+10:00',
 			until:  '2016-06-26T08:00:00+10:00',
-			//CSS: {loader: 'timeline-loader', loading: 'loading span2 alert alert-info clearfix'},
 			dataProviders: [dpDemo1],
-			//onDataLoaded: onDataLoaded,
-			//formatContent: formatVisContent
 		})
 		.scipilot_logline('load');
 
@@ -123,6 +128,9 @@ $(function(){
 			data: data
 		});
 	}
+
+	// DEMO 2 -------------------------------------------------------------
+
 	// Initialise plugin from context (config, params from UI controls)
 	var jSPTimeline = $('#timeline-demo2');
 	jSPTimeline.scipilot_logline({
@@ -147,7 +155,7 @@ $(function(){
 			},
 			{logId:		2, 
 				date:	'2016-06-21T08:00:00+10:00',
-				title:	'Discussed epics',
+				title:	'Discussed 2 epics',
 				type: '',
 				state:	0
 			},
@@ -158,7 +166,7 @@ $(function(){
 			},
 			{logId:		4, 
 				date:	'2016-06-21T10:00:00+10:00',
-				title:	'Discussed budget',
+				title:	'Discussed 2 budget',
 				type: '',
 				state:	0
 			},
@@ -169,7 +177,7 @@ $(function(){
 			},
 			{logId:		6, 
 				date:	'2016-06-24T15:00:00+10:00',
-				title:	'Discussed mandatory coffee breaks',
+				title:	'Discussed 2 mandatory coffee breaks',
 				type: '',
 				state:	0
 			}
@@ -189,6 +197,118 @@ $(function(){
 			},
 			data: data
 		});
+	}
+
+	// DEMO 3 -------------------------------------------------------------
+
+	// Initialise plugin from context (config, params from UI controls)
+	var jSPTimeline = $('#timeline-demo3');
+	jSPTimeline.scipilot_logline({
+			// API:{URL:				'//<?=$viewModel->apiUrl?>'}, 
+			unitId: 1,
+			since:  '2016-06-20T08:00:00+10:00',
+			until:  '2016-06-26T08:00:00+10:00',
+			dataProviders: [dpDemo1, dpDemo2, dpDemo3],
+			onDataLoaded: onDataLoaded,											// Add in an event handler to add tool tips
+			format: formatVisContent												// Formatter for items
+		})
+		.scipilot_logline('load');
+
+	// Data-provider 2, an example of statefully ranged logs, with separate start and end events. 
+	function dpDemo3(unitId, since, until, callback){
+
+		// Demonstrates mixed data from different systems, fieldnames have been normalised already (by API transformer or data-mapper).
+		// Note additional data fields are	 ignored by the system, but can be used in your formatter callbacks.
+		var data = [
+			{logId:		1, 
+				date:	'2016-06-20T10:00:00+10:00',
+				callerId:	'0412345678',
+				type: 'A',
+				state:	1
+			},
+			{logId:		2, 
+				date:	'2016-06-21T08:00:00+10:00',
+				callerId:	'0412345678',
+				duration:	'01:02:34',
+				otherData: 'Foo',
+				type: 'A',
+				state:	0
+			},
+			{logId:		3, 
+				date:	'2016-06-21T09:00:00+10:00',
+				callerId:	'Skype Call from 123.456.789',
+				type: 'B',
+				state:	1
+			},
+			{logId:		4, 
+				date:	'2016-06-21T10:00:00+10:00',
+				callerId:	'Skype Call from 123.456.789',
+				duration:	'01:02:34',
+				otherData: 'Bar',
+				type: 'B',
+				state:	0
+			},
+			{logId:		5, 
+				date:	'2016-06-24T14:00:00+10:00',
+				endDate:	'2016-06-24T15:00:00+10:00',
+				type: 'C',
+				callerId:	'Ext 256',
+			},
+			{logId:		6, 
+				date:	'2016-06-21T08:44:00+10:00',
+				callerId:	'Some unknown log error',
+				code: 123,
+				otherUnknownData: 'WTF',
+				type: 'Z?'   // broken / unclassified
+			},
+			{logId:		7, 
+				date:	'2016-06-22T18:25:00+10:00',
+				callerId:	'Connection Error',
+				code: 256,
+				randomField: 'stuff',
+				type: 'D'
+			}
+		];
+		// Send the data back to the timeline
+		callback('success',{
+			meta:{
+				family: 'D3',
+				dateField:'date',									// Start for pre-ranged, both for state-ranged
+				endDateField:'endDate',						// End   for pre-ranged (not used for state-ranged) 
+				stateField:'state',								// For state-ranged logs, this is the flip-flop field 
+				rangedLogs: ['A', 'B'], 					// Some logs are state-ranged. The others are treated as instant or pre-ranged.
+				titleField: 'callerId',						// Pick the best field for the user viewing the logs
+				logGroups: ['','A', 'B','C','D'], // Declare known groups plus '' for catch-all 
+				logGroupField: 'type',						// 
+				groupTitles:{'A':'PTSN', 'B': 'VOIP', 'C': 'PABX Calls', 'D':'PABX Errors'},
+				cssClassMap:{'':'info', 'D': 'error'}
+			},
+			data: data
+		});
+	}
+
+	/**
+	 * @private
+	 * @param meta Object
+	 * @param datum Object log row
+	 * @return Object {content: '<content>', className: '<cssClass>'};
+	 */
+	 function formatVisContent(meta, datum) {
+		var logGroup = meta.logGroupField ? datum[meta.logGroupField] : ''; // '' is default for no grouping
+		var content = '<pre>' + JSON.stringify(datum, null, " ").replace(/"/g, '&quot;') + '</pre>';  //pauper's formatter
+		// Uses Bootstrap popover.
+		content = ''
+			+ '<a class="timeline-popover" '
+			+ ' 	data-content="' + content + '" >'
+			+ datum[meta.titleField]
+			+ '<span class="glyphicon glyphicon-info-sign">&nbsp;&nbsp;</span></a>';
+		return {content: content, className: meta.cssClassMap[logGroup]};
+	}
+
+	// Event handler for post-processing the timeline - after all data is loaded.
+	function onDataLoaded(){
+		// Bind the log/event tooltip/popovers. container:body solves overflow clipping.
+		$('#timeline-demo3 .timeline-popover').popover({html: true, trigger: "hover", placement: "bottom", container: "body"});
 	}
 
 })
