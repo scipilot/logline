@@ -1,16 +1,16 @@
 /**
  * @author Pip Jones
  * @since  10/06/2016
- * @see https://github.com/scipilot/logline
- * 
+ *
  * Requires pluginMaker (my version adapted from Jupiter)
- * 
- * @todo Display the time-window on the background, to indicate where data is truncated (until infinite load is implemented!)
+ *
  * @todo add UI group ordering to metadata? currently it's load sequence order
- * @todo trouble with the height
+ * @todo Option: remove empty groups, or collapse them: changes are confusing.
+ * @todo trouble with the full-height
  * @todo 'family' could be internally generated on data injection, it's just an index and the user doesn't care about it.
  * @todo Repaired or modified logs should be visually flagged.
  * @todo Split into core logic and JQuery plugin wrapper, so it can be used independently of JQuery
+ * @todo [workaround:window limited]Display the time-window on the background, to indicate where data is truncated (until infinite load is implemented!)
  */
 (function ($) {
 	// Define plugin class.
@@ -98,25 +98,6 @@
 			};
 		},
 
-/* RETIRE
-		// @private call this before processing after adding all families. Can be re-called.
-		// @see getVisGroup() to recalculate these Group Index on the fly.
-		indexFamilyToGroup: function () {
-			// Indexing
-			// todo: this is a bit wasteful, just discards and rebuilds: make it more like "add to index"?
-			this.dsGroups.clear();
-			// Add groups together indexed via family+log group id (to differentiate e.g. 'S').
-			var self = this;
-			$.each(this.aFamilies, function (i, f) {
-				$.each(self.aLogGroups[f], function (j, g) {
-					var id = f + '.' + g;
-					self.dsGroups.add({id: id, content: self.aGroupTitles[f][g], order: i++});
-					self.aLogGroupIndex[id] = self.dsGroups.length;
-				});
-			});
-		},
-*/
-
 		// @private call this before processing after adding all families. Can be re-called.
 		// @see getVisGroup() to recalculate these Group Index on the fly.
 		indexGroup: function (meta) {
@@ -124,7 +105,7 @@
 			if(meta.logGroups){
 				$.each(meta.logGroups, $.proxy(function (j, g) {
 					var id = meta.family + '.' + g;
-					this.dsGroups.add({id: id, content: meta.groupTitles[g], order: this.aLogGroupIndex.length});
+					this.dsGroups.add({id: id, content: meta.groupTitles[g], order: meta.order + j});
 					this.aLogGroupIndex[id] = this.dsGroups.length;
 				}, this));
 			}
@@ -166,14 +147,9 @@
 		 */
 		injectMetaData: function (meta) {
 
-			//RETIRE this.aFamilies.push(meta.family);
 			meta.logGroups = meta.logGroups ? meta.logGroups : ['']; // default to one subgroup, and "correct" the metadata (by reference)
-			//RETIRE this.aLogGroups[meta.family] = meta.logGroups;
-			//RETIRE this.aGroupTitles[meta.family] = meta.groupTitles;
-			//RETIRE this.aCssClassMap[meta.family] = meta.cssClassMap;
 
 			// meta reindex this.aLogGroupIndex
-			//this.indexFamilyToGroup();
 			this.indexGroup(meta);
 		},
 
