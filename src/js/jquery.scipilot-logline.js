@@ -105,7 +105,10 @@
 			if(meta.logGroups){
 				$.each(meta.logGroups, $.proxy(function (j, g) {
 					var id = meta.family + '.' + g;
-					this.dsGroups.add({id: id, content: meta.groupTitles[g], order: meta.order + j});
+					// fall back to first-come ordering, if no order parameter provided.
+					var order = meta.order ? meta.order + j : this.aLogGroupIndex.length;
+
+					this.dsGroups.add({id: id, content: meta.groupTitles[g], order: order});
 					this.aLogGroupIndex[id] = this.dsGroups.length;
 				}, this));
 			}

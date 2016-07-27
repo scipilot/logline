@@ -81,6 +81,7 @@ The metadata describing the data has the following properties:
 
      {
 		family: 'X', 					// Unique log series family ID
+        order: X,                       // Base-order for this data-provider, the groups are sub-ordered by the logGroup array implicit order. 
 		apiNoun:'tripLog',				// For API-loaded data, the REST noun to query
 		stateField:'<fieldname>',		// Optional; Which log field flip-flops the start-end state (for state-ranged logs)
 		dateField:'<fieldname>',		// Which log field contains the FSM date; or the start date if endDateField is included
@@ -106,6 +107,10 @@ The `logGroups` lists "known groups" and used to look up a few other maps (hashe
 - The `groupTitles` hash provides a lookup of the titles shown in the Timeline.
 - The `cssClassMap` hash provides a lookup of the CSS classes to apply to each event: e.g. "info", "warning", "error" etc. or per-event specific colours.
 - `rangedLogs` (see below) specifies which groups are state-ranged.
+
+As the dataProviders are loaded asynchronously, the Vis group can jump around on each load. To stop this, provide an `order` which 
+sets the base order for each dataProvider. e.g. the first dataProvider `order`=1, if it has 5 `logGroups`, the next dataProvider should have `order`=6.
+
 
 ### Log time formats
 
