@@ -158,6 +158,7 @@
 
 		/**
 		 * Handles sync/async loading via dataProvider which performs either local or remote data-loading.
+		 * On error the returned data should be e.g. {error:{status:404, message:'Not found'}}
 		 * @param fnDataProvider should return to the callback a data Object {meta:{logGroupField:, stateField:, dateField:, groupTitles:{}, rangedLogs:{}, cssClassMap:{}}, data:{[ row, ... ]}}
 		 * @param total int Number of series to be loaded
 		 * @param index int 1-based index of which series this is
@@ -178,7 +179,8 @@
 						this.processLogs(data.data, data.meta);
 					}
 					else {
-						alert('Sorry, the ' + data.meta.apiNoun + ' data failed to load. (' + status + ')');
+						alert('Sorry, the ' + data.meta.apiNoun + ' data failed to load.'
+							+ ((data && data.error) ? ' (' + data.error.status +' '+ data.error.message +')' :'') );
 					}
 
 					jLoadingSpinner.remove();

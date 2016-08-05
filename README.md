@@ -166,6 +166,23 @@ Basic example
 		})
     .scipilot_logline('load');
 
+Enhanced error handling
+
+By default the JQuery ajax error response is lacklustre.
+You can send more details into the dataProvider callback, by sending {status: , message: } from the $.ajax error handler.
+Or trap and handle it yourself of course. 
+e.g.
+
+		$.ajax({
+			dataType: "json",
+			url: yourAPIURL,
+			success: function (data) {
+				if (callback) callback('success', data);
+			},
+			error: function (xhr, textStatus, errorThrown) {
+				if(callback) callback(textStatus, {status:xhr.status, message:errorThrown});
+			}
+
 ## Demos
  
  See demo/index.html for examples.
