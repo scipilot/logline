@@ -4,7 +4,7 @@
  *
  * Requires pluginMaker (my version adapted from Jupiter)
  *
- * @todo add UI group ordering to metadata? currently it's load sequence order
+ * @todo Option: custom format() function per dataProvider.
  * @todo Option: remove empty groups, or collapse them: changes are confusing.
  * @todo trouble with the full-height
  * @todo 'family' could be internally generated on data injection, it's just an index and the user doesn't care about it.
