@@ -28,16 +28,16 @@
 		dsItems: null,
 		dsGroups: null,
 
-		aFamilies: [],
+		//x aFamilies: [],
 
 		// Define how the events are grouped. Group 0= default/misc if no match on event name.
-		aLogGroups: {},
+		//x aLogGroups: {},
 		aLogGroupIndex: [], // index built dynamically
 
 		// Content hashes (group titles) indexed by the log group.
-		aGroupTitles: {},
+		//x aGroupTitles: {},
 		// CSS Classes for each log/event type
-		aCssClassMap: {},
+		//x aCssClassMap: {},
 
 		// stores vis.js Timeline options
 		timelineOptions: {},
@@ -52,7 +52,8 @@
 			until: '',
 			'CSS': {
 				'loading': 'loading',
-				'loader': 'loader'
+				'loader': 'loader',
+				'empty': 'empty'
 			},
 			dataProviders: [],
 			format: function(meta, datum){
@@ -186,7 +187,10 @@
 					jLoadingSpinner.remove();
 
 					// Detect the overall end, allowing any async load order
-					if(++this.seriesLoaded == total) this.settings.onDataLoaded();
+					if(++this.seriesLoaded == total) {
+						this.hideEmptyGroups();
+						this.settings.onDataLoaded();
+					}
 
 				}, this));
 		},
@@ -199,13 +203,12 @@
 		 */
 		processLogs: function (data, meta) {
 			// Note: eventStates must be an Object for $.each to work, as its a hash.
-			var i, datum, eventStates = {}, visGroup, iSubGroup=1;
+			var i, datum, eventStates = {}, iSubGroup=1;
 			var end = null, start = null;
 
 			// Parse response, convert to vis.DataSet
 			for (i = 0; i < data.length; i++) {
 				datum = data[i];
-				visGroup = this.getVisGroup(meta.family, datum[meta.logGroupField]);
 				end = null;
 				start = null;
 
@@ -351,7 +354,30 @@
 			// Check group exists, some logs are wrong (e.g. 'E.C' which has the RFID in the event, until it's reworked :-/)
 			// if not found return the family "blank" group (misc)
 			return this.aLogGroupIndex.hasOwnProperty(id) ? id : family + '.';
+		},
+
+		/**
+		 * Often there a a lot of empty rows, especially the "misc" rows which shouldn't have anything (unless there's a mapping error).
+		 */
+		hideEmptyGroups: function(){
+			var g, items;
+
+			// Count items in each group (I could have indexed this along the way)
+			for(g in this.aLogGroupIndex) {
+				items = this.dsItems.get({
+					filter: function (item) {
+						return item.group == g;
+					}
+				});
+				if(items == null || items.length == 0){
+					// what to do?
+					//this.dsGroups.update({id: g, className:this.settings.CSS.empty}); // low-light it
+					this.dsGroups.remove({id: g}); 						// entirely remove it
+					// this.dsGroups.update({id: g, content:''}); // collapse it - almost the same a remove, but I'd intended to allow user to uncollapse it to see what it was...
+				}
+			}
 		}
+
 	});
 
 	// --------------------------------------------------------------
