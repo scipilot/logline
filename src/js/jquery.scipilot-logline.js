@@ -66,7 +66,8 @@
 					content: content,
 					className: meta.cssClassMap[logGroup]
 				};
-			}
+			},
+			events: []
 		},
 		seriesLoaded: 0, // tracks DP loading progress
 
@@ -137,6 +138,12 @@
 			this.dsGroups = new vis.DataSet();
 
 			this.timeline = new vis.Timeline(this.element.get(0), this.dsItems, this.dsGroups, this.timelineOptions);
+
+			// Attach any events
+			for (var i in this.settings.events){
+				var e = this.settings.events[i];
+				this.timeline.on(e.event, e.func);
+			}
 
 			// Load the data mashup list
 			this.seriesLoaded = 0;
