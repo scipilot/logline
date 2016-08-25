@@ -52,6 +52,7 @@ init options (with defaults):
     dataProviders: Array [func, ...]  Callback functions which will return injected data (below)
 	onDataLoaded: function()          Event handler callback for when all data series have loaded
     format: function(meta, datum)     Event handler callback to format each log for the timeline (below)
+    events: [ {'event':'NAME', 'func': HANDLER}, ... ] Optional List of Vis Timeline event handlers, e.g. "rangechanged"
 
 > note: some of these parameters have become a little redundant since the data-loading and formatting were inverted back to the caller.
 
@@ -149,6 +150,20 @@ Note: 'type' is set automatically by this plugin to either 'range' or 'box' acco
             style: <CSS>
         };
      }
+
+### Timeline events
+
+You can subscribe to all the Vis.org Timeline events via the "events" configuration option.
+e.g.
+
+			// Listen for timeline rendering changes, e.g. to clear popovers.
+			events: [
+				{event: 'rangechanged', func: function(start, end, byUser){
+					console.log('event fired');
+					$('.timeline-popover').popover('hide');
+				} }
+			]
+
 
 ## Usage
 
