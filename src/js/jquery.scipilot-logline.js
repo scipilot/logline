@@ -211,13 +211,13 @@
 		processLogs: function (data, meta) {
 			// Note: eventStates must be an Object for $.each to work, as its a hash.
 			var i, datum, eventStates = {}, iSubGroup=1;
-			var end = null, start = null;
 
 			// Parse response, convert to vis.DataSet
 			for (i = 0; i < data.length; i++) {
 				datum = data[i];
-				end = null;
-				start = null;
+				// Add meta properties to help indicate the range this was gleaned from
+				datum._rangeEnd = null;
+				datum._rangeStart = null;
 
 				// If this log group is defined as a ranged-log,
 				// Check for "state-ranged" time-span events, with a log per state transition (e.g. Key states, Sessions)
@@ -249,9 +249,10 @@
 							// State 1:1
 							// Close prior event with end from this one, then continue with new one.
 							// TODO : perhaps this log should be visually flagged as repaired or modified
-							start = eventStates[datum[meta.logGroupField]][meta.dateField];
-							end = datum[meta.dateField];
-							this.addVisItem(meta, datum, start, end, null);
+							datum._rangeStart = eventStates[datum[meta.logGroupField]][meta.dateField];
+							datum._rangeEnd = datum[meta.dateField];
+							datum._rangeWarning = "End log not found! Clipped at " + datum._rangeEnd;
+							this.addVisItem(meta, datum, datum._rangeStart, datum._rangeEnd, null);
 							this.log('Timeline warning: A stateful log with no end was detected and closed off. Perhaps a missing end-log? ', datum);
 						}
 						// State [0-]:1
@@ -260,13 +261,13 @@
 					}
 					else {
 						// Assume 0 = off/end
-						end = datum[meta.dateField];
+						datum._rangeEnd = datum[meta.dateField];
 
 						// Check we have a cached open event to close
 						if (eventStates[datum[meta.logGroupField]]) {
 							// State 1:0
 							// End it and add ranged event to timeline
-							start = eventStates[datum[meta.logGroupField]][meta.dateField];
+							datum._rangeStart = eventStates[datum[meta.logGroupField]][meta.dateField];
 							eventStates[datum[meta.logGroupField]] = null; //unset? pop? splice?
 						}
 						else {
@@ -274,9 +275,10 @@
 							// This is a log error or a "start-open" due to window cropping data
 							// Default the start to the search window
 							// TODO : perhaps this log should be visually flagged as repaired or modified
-							start = this.settings.since;
+							datum._rangeStart = this.settings.since;
+							datum._rangeWarning = "Start log not found! Clipping to search range.";
 						}
-						this.addVisItem(meta, datum, start, end, null);
+						this.addVisItem(meta, datum, datum._rangeStart, datum._rangeEnd, null);
 					}
 				}
 				else {
@@ -287,22 +289,21 @@
 					// Also validate missing end-date, and fall back to pin rather than an endless range. (Or does Vis do that anyway?)
 					if(meta.endDateField && datum[meta.endDateField]){
 						// Date-ranged single-log with start-end date (e.g. Bookings, Incidents)
-						end = datum[meta.endDateField];
+						datum._rangeEnd = datum[meta.endDateField];
 					}
 					// TODO : perhaps split the conditional, and the log with missing end should be visually flagged as repaired or modified
 
 					// (Send unique subgroup in case it's stacking)
-					this.addVisItem(meta, datum, null, end, iSubGroup++);
+					this.addVisItem(meta, datum, null, datum._rangeEnd, iSubGroup++);
 				}
 			}
 
 			// To finish up, we need to scan the working cache for unfinished eventStates ("never-closed")
 			// and add them in with truncated endings.
 			// TODO : perhaps this log should be visually flagged as repaired or modified
-			end = this.settings.until;
 			$.each(eventStates, $.proxy(function(i, datum){
 				if(datum){
-					this.addVisItem(meta, datum, null, end, null);
+					this.addVisItem(meta, datum, null, this.settings.until, null);
 				}
 			}, this));
 
