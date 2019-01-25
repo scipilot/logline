@@ -1,16 +1,16 @@
 /**
  * @author Pip Jones
  * @since  10/06/2016
- * @see https://github.com/scipilot/logline
- * 
+ *
  * Requires pluginMaker (my version adapted from Jupiter)
- * 
- * @todo Display the time-window on the background, to indicate where data is truncated (until infinite load is implemented!)
- * @todo add UI group ordering to metadata? currently it's load sequence order
- * @todo trouble with the height
+ *
+ * @todo Option: custom format() function per dataProvider.
+ * @todo Option: remove empty groups, or collapse them: changes are confusing.
+ * @todo trouble with the full-height
  * @todo 'family' could be internally generated on data injection, it's just an index and the user doesn't care about it.
  * @todo Repaired or modified logs should be visually flagged.
  * @todo Split into core logic and JQuery plugin wrapper, so it can be used independently of JQuery
+ * @todo [workaround:window limited]Display the time-window on the background, to indicate where data is truncated (until infinite load is implemented!)
  */
 (function ($) {
 	// Define plugin class.
@@ -28,16 +28,16 @@
 		dsItems: null,
 		dsGroups: null,
 
-		aFamilies: [],
+		//x aFamilies: [],
 
 		// Define how the events are grouped. Group 0= default/misc if no match on event name.
-		aLogGroups: {},
+		//x aLogGroups: {},
 		aLogGroupIndex: [], // index built dynamically
 
 		// Content hashes (group titles) indexed by the log group.
-		aGroupTitles: {},
+		//x aGroupTitles: {},
 		// CSS Classes for each log/event type
-		aCssClassMap: {},
+		//x aCssClassMap: {},
 
 		// stores vis.js Timeline options
 		timelineOptions: {},
@@ -52,7 +52,8 @@
 			until: '',
 			'CSS': {
 				'loading': 'loading',
-				'loader': 'loader'
+				'loader': 'loader',
+				'empty': 'empty'
 			},
 			dataProviders: [],
 			format: function(meta, datum){
@@ -65,7 +66,8 @@
 					content: content,
 					className: meta.cssClassMap[logGroup]
 				};
-			}
+			},
+			events: []
 		},
 		seriesLoaded: 0, // tracks DP loading progress
 
@@ -98,25 +100,6 @@
 			};
 		},
 
-/* RETIRE
-		// @private call this before processing after adding all families. Can be re-called.
-		// @see getVisGroup() to recalculate these Group Index on the fly.
-		indexFamilyToGroup: function () {
-			// Indexing
-			// todo: this is a bit wasteful, just discards and rebuilds: make it more like "add to index"?
-			this.dsGroups.clear();
-			// Add groups together indexed via family+log group id (to differentiate e.g. 'S').
-			var self = this;
-			$.each(this.aFamilies, function (i, f) {
-				$.each(self.aLogGroups[f], function (j, g) {
-					var id = f + '.' + g;
-					self.dsGroups.add({id: id, content: self.aGroupTitles[f][g], order: i++});
-					self.aLogGroupIndex[id] = self.dsGroups.length;
-				});
-			});
-		},
-*/
-
 		// @private call this before processing after adding all families. Can be re-called.
 		// @see getVisGroup() to recalculate these Group Index on the fly.
 		indexGroup: function (meta) {
@@ -124,7 +107,10 @@
 			if(meta.logGroups){
 				$.each(meta.logGroups, $.proxy(function (j, g) {
 					var id = meta.family + '.' + g;
-					this.dsGroups.add({id: id, content: meta.groupTitles[g], order: this.aLogGroupIndex.length});
+					// fall back to first-come ordering, if no order parameter provided.
+					var order = meta.order ? meta.order + j : this.aLogGroupIndex.length;
+
+					this.dsGroups.add({id: id, content: meta.groupTitles[g], order: order});
 					this.aLogGroupIndex[id] = this.dsGroups.length;
 				}, this));
 			}
@@ -153,6 +139,12 @@
 
 			this.timeline = new vis.Timeline(this.element.get(0), this.dsItems, this.dsGroups, this.timelineOptions);
 
+			// Attach any events
+			for (var i in this.settings.events){
+				var e = this.settings.events[i];
+				this.timeline.on(e.event, e.func);
+			}
+
 			// Load the data mashup list
 			this.seriesLoaded = 0;
 			$.each(this.settings.dataProviders, $.proxy(function (i, dp) {
@@ -166,19 +158,15 @@
 		 */
 		injectMetaData: function (meta) {
 
-			//RETIRE this.aFamilies.push(meta.family);
 			meta.logGroups = meta.logGroups ? meta.logGroups : ['']; // default to one subgroup, and "correct" the metadata (by reference)
-			//RETIRE this.aLogGroups[meta.family] = meta.logGroups;
-			//RETIRE this.aGroupTitles[meta.family] = meta.groupTitles;
-			//RETIRE this.aCssClassMap[meta.family] = meta.cssClassMap;
 
 			// meta reindex this.aLogGroupIndex
-			//this.indexFamilyToGroup();
 			this.indexGroup(meta);
 		},
 
 		/**
 		 * Handles sync/async loading via dataProvider which performs either local or remote data-loading.
+		 * On error the returned data should be e.g. {error:{status:404, message:'Not found'}}
 		 * @param fnDataProvider should return to the callback a data Object {meta:{logGroupField:, stateField:, dateField:, groupTitles:{}, rangedLogs:{}, cssClassMap:{}}, data:{[ row, ... ]}}
 		 * @param total int Number of series to be loaded
 		 * @param index int 1-based index of which series this is
@@ -199,13 +187,17 @@
 						this.processLogs(data.data, data.meta);
 					}
 					else {
-						alert('Sorry, the ' + data.meta.apiNoun + ' data failed to load. (' + status + ')');
+						alert('Sorry, the ' + data.meta.apiNoun + ' data failed to load.'
+							+ ((data && data.error) ? ' (' + data.error.status +' '+ data.error.message +')' :'') );
 					}
 
 					jLoadingSpinner.remove();
 
 					// Detect the overall end, allowing any async load order
-					if(++this.seriesLoaded == total) this.settings.onDataLoaded();
+					if(++this.seriesLoaded == total) {
+						this.hideEmptyGroups();
+						this.settings.onDataLoaded();
+					}
 
 				}, this));
 		},
@@ -218,15 +210,14 @@
 		 */
 		processLogs: function (data, meta) {
 			// Note: eventStates must be an Object for $.each to work, as its a hash.
-			var i, datum, eventStates = {}, visGroup, iSubGroup=1;
-			var end = null, start = null;
+			var i, datum, eventStates = {}, iSubGroup=1;
 
 			// Parse response, convert to vis.DataSet
 			for (i = 0; i < data.length; i++) {
 				datum = data[i];
-				visGroup = this.getVisGroup(meta.family, datum[meta.logGroupField]);
-				end = null;
-				start = null;
+				// Add meta properties to help indicate the range this was gleaned from
+				datum._rangeEnd = null;
+				datum._rangeStart = null;
 
 				// If this log group is defined as a ranged-log,
 				// Check for "state-ranged" time-span events, with a log per state transition (e.g. Key states, Sessions)
@@ -258,9 +249,10 @@
 							// State 1:1
 							// Close prior event with end from this one, then continue with new one.
 							// TODO : perhaps this log should be visually flagged as repaired or modified
-							start = eventStates[datum[meta.logGroupField]][meta.dateField];
-							end = datum[meta.dateField];
-							this.addVisItem(meta, datum, start, end, null);
+							datum._rangeStart = eventStates[datum[meta.logGroupField]][meta.dateField];
+							datum._rangeEnd = datum[meta.dateField];
+							datum._rangeWarning = "End log not found! Clipped at " + datum._rangeEnd;
+							this.addVisItem(meta, datum, datum._rangeStart, datum._rangeEnd, null);
 							this.log('Timeline warning: A stateful log with no end was detected and closed off. Perhaps a missing end-log? ', datum);
 						}
 						// State [0-]:1
@@ -269,13 +261,13 @@
 					}
 					else {
 						// Assume 0 = off/end
-						end = datum[meta.dateField];
+						datum._rangeEnd = datum[meta.dateField];
 
 						// Check we have a cached open event to close
 						if (eventStates[datum[meta.logGroupField]]) {
 							// State 1:0
 							// End it and add ranged event to timeline
-							start = eventStates[datum[meta.logGroupField]][meta.dateField];
+							datum._rangeStart = eventStates[datum[meta.logGroupField]][meta.dateField];
 							eventStates[datum[meta.logGroupField]] = null; //unset? pop? splice?
 						}
 						else {
@@ -283,9 +275,10 @@
 							// This is a log error or a "start-open" due to window cropping data
 							// Default the start to the search window
 							// TODO : perhaps this log should be visually flagged as repaired or modified
-							start = this.settings.since;
+							datum._rangeStart = this.settings.since;
+							datum._rangeWarning = "Start log not found! Clipping to search range.";
 						}
-						this.addVisItem(meta, datum, start, end, null);
+						this.addVisItem(meta, datum, datum._rangeStart, datum._rangeEnd, null);
 					}
 				}
 				else {
@@ -296,22 +289,21 @@
 					// Also validate missing end-date, and fall back to pin rather than an endless range. (Or does Vis do that anyway?)
 					if(meta.endDateField && datum[meta.endDateField]){
 						// Date-ranged single-log with start-end date (e.g. Bookings, Incidents)
-						end = datum[meta.endDateField];
+						datum._rangeEnd = datum[meta.endDateField];
 					}
 					// TODO : perhaps split the conditional, and the log with missing end should be visually flagged as repaired or modified
 
 					// (Send unique subgroup in case it's stacking)
-					this.addVisItem(meta, datum, null, end, iSubGroup++);
+					this.addVisItem(meta, datum, null, datum._rangeEnd, iSubGroup++);
 				}
 			}
 
 			// To finish up, we need to scan the working cache for unfinished eventStates ("never-closed")
 			// and add them in with truncated endings.
 			// TODO : perhaps this log should be visually flagged as repaired or modified
-			end = this.settings.until;
 			$.each(eventStates, $.proxy(function(i, datum){
 				if(datum){
-					this.addVisItem(meta, datum, null, end, null);
+					this.addVisItem(meta, datum, null, this.settings.until, null);
 				}
 			}, this));
 
@@ -370,7 +362,30 @@
 			// Check group exists, some logs are wrong (e.g. 'E.C' which has the RFID in the event, until it's reworked :-/)
 			// if not found return the family "blank" group (misc)
 			return this.aLogGroupIndex.hasOwnProperty(id) ? id : family + '.';
+		},
+
+		/**
+		 * Often there a a lot of empty rows, especially the "misc" rows which shouldn't have anything (unless there's a mapping error).
+		 */
+		hideEmptyGroups: function(){
+			var g, items;
+
+			// Count items in each group (I could have indexed this along the way)
+			for(g in this.aLogGroupIndex) {
+				items = this.dsItems.get({
+					filter: function (item) {
+						return item.group == g;
+					}
+				});
+				if(items == null || items.length == 0){
+					// what to do?
+					//this.dsGroups.update({id: g, className:this.settings.CSS.empty}); // low-light it
+					this.dsGroups.remove({id: g}); 						// entirely remove it
+					// this.dsGroups.update({id: g, content:''}); // collapse it - almost the same a remove, but I'd intended to allow user to uncollapse it to see what it was...
+				}
+			}
 		}
+
 	});
 
 	// --------------------------------------------------------------

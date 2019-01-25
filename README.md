@@ -52,6 +52,7 @@ init options (with defaults):
     dataProviders: Array [func, ...]  Callback functions which will return injected data (below)
 	onDataLoaded: function()          Event handler callback for when all data series have loaded
     format: function(meta, datum)     Event handler callback to format each log for the timeline (below)
+    events: [ {'event':'NAME', 'func': HANDLER}, ... ] Optional List of Vis Timeline event handlers, e.g. "rangechanged"
 
 > note: some of these parameters have become a little redundant since the data-loading and formatting were inverted back to the caller.
 
@@ -81,6 +82,7 @@ The metadata describing the data has the following properties:
 
      {
 		family: 'X', 					// Unique log series family ID
+        order: X,                       // Base-order for this data-provider, the groups are sub-ordered by the logGroup array implicit order. 
 		apiNoun:'tripLog',				// For API-loaded data, the REST noun to query
 		stateField:'<fieldname>',		// Optional; Which log field flip-flops the start-end state (for state-ranged logs)
 		dateField:'<fieldname>',		// Which log field contains the FSM date; or the start date if endDateField is included
@@ -106,6 +108,10 @@ The `logGroups` lists "known groups" and used to look up a few other maps (hashe
 - The `groupTitles` hash provides a lookup of the titles shown in the Timeline.
 - The `cssClassMap` hash provides a lookup of the CSS classes to apply to each event: e.g. "info", "warning", "error" etc. or per-event specific colours.
 - `rangedLogs` (see below) specifies which groups are state-ranged.
+
+As the dataProviders are loaded asynchronously, the Vis group can jump around on each load. To stop this, provide an `order` which 
+sets the base order for each dataProvider. e.g. the first dataProvider `order`=1, if it has 5 `logGroups`, the next dataProvider should have `order`=6.
+
 
 ### Log time formats
 
@@ -145,6 +151,20 @@ Note: 'type' is set automatically by this plugin to either 'range' or 'box' acco
         };
      }
 
+### Timeline events
+
+You can subscribe to all the Vis.org Timeline events via the "events" configuration option.
+e.g.
+
+			// Listen for timeline rendering changes, e.g. to clear popovers.
+			events: [
+				{event: 'rangechanged', func: function(start, end, byUser){
+					console.log('event fired');
+					$('.timeline-popover').popover('hide');
+				} }
+			]
+
+
 ## Usage
 
 Basic example 
@@ -160,6 +180,23 @@ Basic example
 			CSS: {loader: 'timeline-loader', loading: 'loading span2 alert alert-info clearfix'}
 		})
     .scipilot_logline('load');
+
+Enhanced error handling
+
+By default the JQuery ajax error response is lacklustre.
+You can send more details into the dataProvider callback, by sending {status: , message: } from the $.ajax error handler.
+Or trap and handle it yourself of course. 
+e.g.
+
+		$.ajax({
+			dataType: "json",
+			url: yourAPIURL,
+			success: function (data) {
+				if (callback) callback('success', data);
+			},
+			error: function (xhr, textStatus, errorThrown) {
+				if(callback) callback(textStatus, {status:xhr.status, message:errorThrown});
+			}
 
 ## Demos
  
