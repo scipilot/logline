@@ -1,6 +1,7 @@
 /**
  * @author Pip Jones
  * @since  10/06/2016
+ * @since  2019-01-25 Added "data-warning" CSS and made range errors into moments, rather than long ranges. 
  *
  * Requires pluginMaker (my version adapted from Jupiter)
  *
@@ -250,10 +251,11 @@
 							// Close prior event with end from this one, then continue with new one.
 							// TODO : perhaps this log should be visually flagged as repaired or modified
 							datum._rangeStart = eventStates[datum[meta.logGroupField]][meta.dateField];
-							datum._rangeEnd = datum[meta.dateField];
-							datum._rangeWarning = "End log not found! Clipped at " + datum._rangeEnd;
+							datum._rangeEnd = null;
+							datum._rangeWarning = "The matching end to this range-start log was not found!";
+							datum._cssClass = "data-warning";
 							this.addVisItem(meta, datum, datum._rangeStart, datum._rangeEnd, null);
-							this.log('Timeline warning: A stateful log with no end was detected and closed off. Perhaps a missing end-log? ', datum);
+							this.log('Timeline warning: A stateful range-start log with no subsequent range-end log was encountered (two starts in a row).', datum);
 						}
 						// State [0-]:1
 						// Cache the start
@@ -272,11 +274,14 @@
 						}
 						else {
 							// State -:0
-							// This is a log error or a "start-open" due to window cropping data
-							// Default the start to the search window
-							// TODO : perhaps this log should be visually flagged as repaired or modified
-							datum._rangeStart = this.settings.since;
-							datum._rangeWarning = "Start log not found! Clipping to search range.";
+							// This is a log data error or a "start-open" due to window cropping data
+							// This log should be visually flagged as repaired or modified
+							// Convert it to a moment, add specific class to flag data problem
+							datum._rangeEnd = null; 
+							datum._rangeStart = null;
+							datum._rangeWarning = "This range-end log had no preceding range-start log.";
+							datum._cssClass = "data-warning";
+							this.log('Timeline warning: A stateful range-end log with no matching prior range-start log was encountered.', datum);
 						}
 						this.addVisItem(meta, datum, datum._rangeStart, datum._rangeEnd, null);
 					}
@@ -334,7 +339,7 @@
 				group: visGroup,
 				start: start ? start : datum[meta.dateField],
 				content: format.content,
-				className: format.className ? format.className : '',
+				className: datum._cssClass + ' ' + (format.className ? format.className : ''),
 				style: format.style ? format.style : null
 			};
 
